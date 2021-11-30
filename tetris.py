@@ -18,7 +18,7 @@ represented in order by 0 - 6
 
 pygame.font.init()
 
-# GLOBALS VARS
+# GLOBALS VARIABLES
 # s_width tells screen width
 s_width = 800
 # s_heigth tells screen heigth
@@ -212,7 +212,7 @@ def clear_rows(grid, locked):
                     continue
 
     if incrament > 0:
-        #  For every key in lockedpositions, based on y values 
+        #  For every key in lockedpositions, based on y values
         # Starting from the bottom so that values aren't overwritten
         # [::-1] looks at things backwards
         # [(0,1), (0,0)]
@@ -225,6 +225,9 @@ def clear_rows(grid, locked):
                 newKey = (x, y + incrament)
                 # Add an empty row on top
                 locked[newKey] = locked.pop(key)
+
+    # Returns how many rows has been cleared
+    return incrament
 
 
 def valid_space(shape, grid):
@@ -246,7 +249,6 @@ def valid_space(shape, grid):
     return True
 
 
-
 # Checks if any of the positions are above the screen
 def check_lost(positions):
     for pos in positions:
@@ -266,7 +268,7 @@ def draw_next_shape(shape, surface):
     label = font.render('Next Shape', 1, (255, 255, 255))
 
     sx = top_left_x + play_width + 50
-    sy = top_left_y + play_height/2 - 120
+    sy = top_left_y + play_height/2 - 100
 
     # Get the actual sublist that is needed (the shape that will be shown next)
     format = shape.shape[shape.rotation % len(shape.shape)]
@@ -286,6 +288,7 @@ def draw_text_middle(text, size, color, surface):
 
 # Draws the gray lines on top of the grid
 
+
 def draw_grid(surface, grid):
     sx = top_left_x
     sy = top_left_y
@@ -297,16 +300,26 @@ def draw_grid(surface, grid):
             pygame.draw.line(surface, (128, 128, 128), (sx + j *
                              block_size, sy), (sx+j*block_size, sy + play_height))
 
+            # Default value of 0
 
-def draw_window(surface, grid):
+
+def draw_window(surface, grid, score=0):
     surface.fill((0, 0, 0))
     pygame.font.init()
     font = pygame.font.SysFont('comicsans', 60)
-    label = font.render('Tetris Seminaari', 1, (255, 255, 255))
+    title_label = font.render('Tetris Seminaari', 1, (255, 255, 255))
+
+    font = pygame.font.SysFont('comicsans', 30)
+    score_label = font.render('Your score: ' + str(score), 1, (255, 255, 255))
+
+    sx = top_left_x + play_width + 50
+    sy = top_left_y + play_height/2 - 100
 
     # Attach at the top middle of the screen # Automatically adapt to screen size
-    surface.blit(label, (top_left_x + play_width /
-                 2 - (label.get_width() / 2), 30))
+    surface.blit(title_label, (top_left_x + play_width /
+                 2 - (title_label.get_width() / 2), 17))
+
+    surface.blit(score_label, (sx + 10, sy + 160))
 
     # Loop for drawing the grid
     for i in range(len(grid)):
@@ -334,19 +347,22 @@ def main(win):
     fall_time = 0
     fall_speed = 0.27
     level_time = 0
+    score = 0
 
     while run:
         grid = create_grid(locked_positions)
 
-        # get_rawtime gets the amount of time since clock.tick() tick
+        # get_rawtime gets the amount of time since clock.tick() ticked
         fall_time += clock.get_rawtime()
         level_time += clock.get_rawtime()
         clock.tick()
 
+        # The speed is increased every five minutes
         if level_time/1000 > 5:
             level_time = 0
-            if fall_speed > 0.13:
-                level_time -= 0.004
+            if fall_speed > 0.11:
+                # Takes about minute and fourty seconds before reaching terminal velocity
+                fall_speed -= 0.004
 
         # Automatically moves peace down
         if fall_time/1000 > fall_speed:
@@ -398,9 +414,9 @@ def main(win):
             next_piece = get_shape()
             # Change piece will be set false because a new piece is spawned at the top of the screen
             change_piece = False
-            clear_rows(grid, locked_positions)
+            score += clear_rows(grid, locked_positions) * 10
 
-        draw_window(win, grid)
+        draw_window(win, grid, score)
         draw_next_shape(next_piece, win)
         pygame.display.update()
 
