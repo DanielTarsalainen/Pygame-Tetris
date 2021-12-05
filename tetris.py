@@ -1,39 +1,24 @@
 import pygame
 import random
 
-# creating the data structure for pieces
-# setting up global vars
-# functions
-# - create_grid
-# - draw_grid
-# - draw_window
-# - rotating shape in main
-# - setting up the main
-
-"""
-10 x 20 square grid
-shapes: S, Z, I, O, J, L, T
-represented in order by 0 - 6
-"""
-
 pygame.font.init()
 
 # GLOBALS VARIABLES
 # s_width tells screen width
-s_width = 800
+screen_width = 800
 # s_heigth tells screen heigth
-s_height = 700
+screen_height = 700
 play_width = 300  # meaning 300 // 10 = 30 width per block
-play_height = 600  # meaning 600 // 20 = 20 height per block
+play_height = 600  # meaning 600 // 20 = 30 height per block
 block_size = 30
 
-# Top_left position of play area
-top_left_x = (s_width - play_width) // 2
-top_left_y = s_height - play_height
+# Top_left positions of play area
+top_left_x = (screen_width - play_width) // 2
+top_left_y = screen_height - play_height
 
 
-# SHAPE FORMATS
-
+# Shape formats, including their rotations
+# "0" represents a block and "." represents an empty space
 S = [['.....',
       '......',
       '..00..',
@@ -139,11 +124,12 @@ T = [['.....',
 
 # Holds all the shapes in an array
 shapes = [S, Z, I, O, J, L, T]
+# index 0 - 6 represent shape
 shape_colors = [(0, 255, 0), (255, 0, 0), (0, 255, 255),
                 (255, 255, 0), (255, 165, 0), (0, 0, 255), (128, 0, 128)]
-# index 0 - 6 represent shape
 
 
+# Main datastructure for the game, represents the pieces
 class Piece(object):
     def __init__(self, x, y, shape):
         self.x = x
@@ -155,6 +141,7 @@ class Piece(object):
         self.rotation = 0
 
 
+# Creates the game grid, and checks which spots have been filled with shapes
 def create_grid(locked_positions={}):
     # ten colors since there are ten squares in each row. 20 Rows in total
     # (0, 0, 0 stands for black)
@@ -192,18 +179,20 @@ def convert_shape_format(shape):
     return positions
 
 
-def update_totalscore(nscore):
+# Reads and updates the score
+def update_totalscore(next_score):
     with open('scoreboard.txt', 'r') as f:
         lines = f.readlines()
         score = lines[0].strip()
 
     with open('scoreboard.txt', 'w') as f:
-        if int(score) > nscore:
+        if int(score) > next_score:
             f.write(str(score))
         else:
-            f.write(str(nscore))
+            f.write(str(next_score))
 
 
+# Reads the high score from the file
 def high_score():
     with open('scoreboard.txt', 'r') as f:
         lines = f.readlines()
@@ -212,12 +201,12 @@ def high_score():
     return score
 
 
-def clear_rows(grid, locked):
-
+# Clears the amount of rows that the player has filled.
+def clear_rows(grid, locked_positions):
     incrament = 0
     # Loops through grid backwards (-1, -1, -1)
     for i in range(len(grid)-1, -1, -1):
-        # row is equal to every row in our grid
+        # row is equal to every row in the grid
         row = grid[i]
         # (0, 0, 0 means color black)
         if (0, 0, 0) not in row:
@@ -229,7 +218,7 @@ def clear_rows(grid, locked):
             # Because we are in the current row, i stays static
             for j in range(len(row)):
                 try:
-                    del locked[(j, i)]
+                    del locked_positions[(j, i)]
                 except:
                     continue
 
@@ -239,33 +228,32 @@ def clear_rows(grid, locked):
         # [::-1] looks at things backwards
         # [(0,1), (0,0)]
         # --> [(0,0), (0,1)]
-        for key in sorted(list(locked), key=lambda x: x[1])[::-1]:
+        for key in sorted(list(locked_positions), key=lambda x: x[1])[::-1]:
             # getting every x & y position of each key in locked positions
             x, y = key
             if y < index:
-                # Adding to the y value to shift it down
+                # Adding to the y value to shift the row down
                 newKey = (x, y + incrament)
                 # Add an empty row on top
-                locked[newKey] = locked.pop(key)
-
+                locked_positions[newKey] = locked_positions.pop(key)
     # Returns how many rows have been cleared
     return incrament
 
 
 def valid_space(shape, grid):
     # Every single position for 10 20 grid
-    # Only adding a position into accepted_pos if it is empty
     # Imbedded for-loops to create a list
-    valid_position = [[(j, i) for j in range(10) if grid[i]
-                       [j] == (0, 0, 0)] for i in range(20)]
-
     # Flattens the list, so it is one dimensional. [[(0,1)], [(2,3)]] --> [(0,1), (2,3)]
-    valid_position = [j for sub in valid_position for j in sub]
+    # Only adding a position into accepted_pos if it is empty
+    accepted_positions = [[(j, i) for j in range(10) if grid[i]
+                           [j] == (0, 0, 0)] for i in range(20)]
 
-    formatted_positions = convert_shape_format(shape)
+    accepted_positions = [j for sub in accepted_positions for j in sub]
 
-    for position in formatted_positions:
-        if position not in valid_position:
+    formatted = convert_shape_format(shape)
+
+    for position in formatted:
+        if position not in accepted_positions:
             # Tells whether we'are on the grid or not
             if position[1] > -1:
                 return False
@@ -276,25 +264,26 @@ def valid_space(shape, grid):
 def check_lost(positions):
     for pos in positions:
         x, y = pos
-        # If every position is creater than 1, return
         if y < 1:
             return True
-
+        # If every position is creater than 1, return False
     return False
 
 
+# Gets new shape randomly
 def get_shape():
     return Piece(5, 0, random.choice(shapes))
 
 
+# Draws text middle
 def draw_text_middle(surface, text, size, color):
     font = pygame.font.SysFont("mvboli", size)
     label = font.render(text, 1, color)
-
     surface.blit(label, (top_left_x + play_width/2 - (label.get_width()/2),
                  top_left_y + play_height/2 - label.get_height()/2))
 
 
+# Draws text on top of the screen
 def draw_text_top(last_score, surface, text, size, color):
     full_text = text + last_score
     font = pygame.font.SysFont("mvboli", size)
@@ -306,6 +295,7 @@ def draw_text_top(last_score, surface, text, size, color):
     surface.blit(label, (sx + 270, sy))
 
 
+# Draws the next shape
 def draw_next_shape(shape, surface):
     font = pygame.font.SysFont('mvboli', 26)
     label = font.render('Next Shape', 1, (255, 255, 255))
@@ -326,6 +316,7 @@ def draw_next_shape(shape, surface):
     surface.blit(label, (sx + 10, sy - 30))
 
 
+# Draws the game playground grid
 def draw_grid(surface, grid):
     sx = top_left_x
     sy = top_left_y
@@ -340,6 +331,7 @@ def draw_grid(surface, grid):
             # Default value of 0
 
 
+# Draws the game window
 def draw_window(surface, grid, score=0, last_score=0):
     surface.fill((0, 0, 0))
     pygame.font.init()
@@ -373,13 +365,14 @@ def draw_window(surface, grid, score=0, last_score=0):
             pygame.draw.rect(surface, grid[i][j], (top_left_x + j*block_size,
                              top_left_y + i*block_size, block_size, block_size), 0)
 
-    # Draws the game grid
+    # Draws the gamearea frame
     pygame.draw.rect(surface, (86, 0, 199),
                      (top_left_x, top_left_y, play_width, play_height), 5)
 
     draw_grid(surface, grid)
 
 
+# Main function of the game
 def main(window):
     last_score = high_score()
     locked_positions = {}
@@ -451,10 +444,10 @@ def main(window):
             if y > -1:
                 grid[y][x] = current_piece.color
 
+        # Checks whether the piece is not moving anymore.
         if change_piece:
             for position in shape_positions:
                 p = (position[0], position[1])
-                # Checks whether the piece is not moving anymore.
                 locked_positions[p] = current_piece.color
             current_piece = next_piece
             next_piece = get_shape()
@@ -500,6 +493,5 @@ def main_menu(win, last_score):  # *
 
 
 last_score = high_score()
-win = pygame.display.set_mode((s_width, s_height))
-pygame.display.set_caption('Seminaari Tetris')
+win = pygame.display.set_mode((screen_width, screen_height))
 main_menu(win, last_score)
